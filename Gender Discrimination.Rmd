@@ -1,32 +1,80 @@
 ---
-title: "Consillient Assessment"
+title: "Women’s access to justice through Xeer"
 author: "Chetan"
 date: "11/03/2022"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 
 
-```{r libraries}
+```{r libraries, warning=FALSE, message=FALSE}
 library(readxl)
 library(tidyverse)
 library(rstatix)
+library(knitr)
 ```
 
 
-```{r data load}
+```{r data load, warning=FALSE}
 data <- read_excel("./data.xlsx")
 ```
 
-## Descritive Statitics
+Data loaded.  
 
-```{r pressure, echo=FALSE}
+# Descriptive statistics
 
-table(data$`Do you know anyone - or have you heard about anyone - who is a victim of rape or`, useNA = "always")
+```{r}
+## Known Victim Table
+known_victim_table <- table(data$`Do you know anyone - or have you heard about anyone - who is a victim of rape or`, useNA = "always")
+cat("**Table: Known Victim**\n")
+kable(as.data.frame(known_victim_table), col.names = c("Response", "Frequency"))
 
-table(data$random_half, useNA = "always")
+
+## Random Half Table (variable “random_half” identifies which survey module a respondent was allocated to (IPV survey module or the rape survey module))
+random_half_table <- table(data$random_half, useNA = "always")
+cat("**Table: Random Half**\n")
+kable(as.data.frame(random_half_table), col.names = c("Group", "Frequency"))
+
+
+# Generate proportions for better understanding
+known_victim_prop <- prop.table(known_victim_table) * 100
+random_half_prop <- prop.table(random_half_table) * 100
+
+
+# Print proportions
+cat("**Proportions: Known Victim**\n")
+kable(as.data.frame(known_victim_prop), col.names = c("Response", "Proportion (%)"))
+
+cat("**Proportions: Random Half**\n")
+kable(as.data.frame(random_half_prop), col.names = c("Group", "Proportion (%)"))
+
+```
+
+
+## Plot for Known Victim
+```{r}
+ggplot(data = as.data.frame(known_victim_table), aes(x = Var1, y = Freq)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Known Victim Distribution", x = "Response", y = "Frequency") +
+  theme_minimal()
+
+```
+
+## Plot for Random Half
+
+```{r}
+ggplot(data = as.data.frame(random_half_table), aes(x = Var1, y = Freq)) +
+  geom_bar(stat = "identity", fill = "lightgreen") +
+  labs(title = "Random Half Distribution", x = "Group", y = "Frequency") +
+  theme_minimal()
+```
+
+# Data Preparation
+## Rename columns for easier access
+
+```{r}
 
 data = rename(data, children_girls = `How many of your children are girls?`,
               education = `What is the highest level of schooling you have completed?`,
@@ -39,7 +87,6 @@ data = rename(data, children_girls = `How many of your children are girls?`,
               walk_night = `Do you feel comfortable walking around this area alone at night?`,
               known_victim = `Do you know anyone - or have you heard about anyone - who is a victim of rape or`)
 
-#data$dv_ideal_outcome1_lab
 
 
 # Create a new data frame which is required for analysis
@@ -47,10 +94,9 @@ data_new <- data %>% dplyr::select("age", "children_girls", "education", "female
 ```
 
 
+# Data Cleaning and Transformation
+## Random half
 ```{r}
-#class(data_new$random_half)
-#unique(data_new$random_half)
-
 # Random half
 data_new$random_half[which(data_new$random_half == '0. sgbv')] <- "sgbv"
 data_new$random_half[which(data_new$random_half == '1. dv')] <- "dv"
@@ -70,11 +116,11 @@ data_new$education[which(data_new$education == '5. Completed Secondary')] <- "Co
 data_new$education[which(data_new$education == '4. Some Secondary')] <- "Some Secondary"
 
 
-# land own in
+# Land own in
 data_new$land_own_in[which(data_new$land_own_in == '1. Yes')] <- "Yes"
 data_new$land_own_in[which(data_new$land_own_in == '0. No')] <- "No"
 
-# marital status
+# Marital status
 data_new$marital_status[which(data_new$marital_status == '1. Married')] <- "Married"
 data_new$marital_status[which(data_new$marital_status == '2. Single')] <- "Single"
 data_new$marital_status[which(data_new$marital_status == '3. Divorced')] <- "Divorced"
@@ -83,11 +129,11 @@ data_new$marital_status[which(data_new$marital_status == '4. Widow/widower')] <-
 data_new$marital_status[which(data_new$marital_status == '99. Refused to answer')] <- "Refused to answer"
 
 
-# police loc
+# Police location
 data_new$police_loc[which(data_new$police_loc == '1. Yes')] <- "Yes"
 data_new$police_loc[which(data_new$police_loc == '0. No')] <- "No"
 
-# time here
+# Time here
 data_new$time_here[which(data_new$time_here == '3. More than 5 years')] <- "More than 5 years"
 data_new$time_here[which(data_new$time_here == '2. 1-5 years')] <- "1-5 years"
 data_new$time_here[which(data_new$time_here == '1. Less than one year')] <- "Less than one year"
@@ -116,7 +162,7 @@ data_new$dv_ideal_outcome1_lab[which(data_new$dv_ideal_outcome1_lab == 'Qofka dh
 data_new$dv_ideal_outcome1_lab[which(data_new$dv_ideal_outcome1_lab == 'Dambiilaha waa la ciqaabay')] <- "The offender is punished"
 data_new$dv_ideal_outcome1_lab[which(data_new$dv_ideal_outcome1_lab == 'Qoyska/kooxda dhibbanaha waxaa la siiyay magdhow ama dhaawacii loo geystay ayaa dib loo hagaajiyay ama waa la taageeray.')] <- "The victim's family / group is compensated or made whole or supported"
 
-# Deleting na from random half
+## Deleting NA from random half
 colSums(is.na(data_new))
 
 
@@ -138,6 +184,13 @@ data_new$rural <- as.factor(data_new$rural)
 data_new$majority <- as.factor(data_new$majority)
 data_new$sgbv_ideal_outcome1_lab <- as.factor(data_new$sgbv_ideal_outcome1_lab)
 data_new$dv_ideal_outcome1_lab <- as.factor(data_new$dv_ideal_outcome1_lab)
+
+
+```
+
+
+```{r}
+
 str(data_new)
 
 #class(data_new$time_here)
@@ -147,33 +200,21 @@ data.group.random.half <- group_by(data_new, random_half)
 
 table(data.group.random.half$random_half, data.group.random.half$female_police)
 
+
+
 ```
 
 
+## Summary statistics
 ```{r}
 summary(data_new)
 ```
 
 
-
+## Tables and Chi-square test for sgbv data
 
 ```{r}
 data_sgbv <- filter(data_new, random_half == 'sgbv')
-
-#table(data.group.random.half$random_half, data.group.random.half$known_victim)
-# table(data.group.random.half$random_half, data.group.random.half$female_police)
-# table(data.group.random.half$random_half, data.group.random.half$time_here)
-
-```
-```{r}
-#ggplot(data_sgbv, aes(x = walk_night, y = age)) + geom_bar(aes(fill = majority), stat = "identity", color = "white",position = position_dodge(0.9))+facet_grid(~marital_status) 
-
-# table_sgbv_rural_time <- table(data_sgbv$rural, data_sgbv$time_here)
-# 
-# addmargins(table_sgbv_rural_time)
-# addmargins(prop.table(table_sgbv_rural_time))
-
-
 table_sgbv_rural_police <- table(data_sgbv$rural, data_sgbv$police_loc)
 
 addmargins(table_sgbv_rural_police)
@@ -188,15 +229,13 @@ Based on the results of the chi-square test generated above, p-value is 0.014, w
 
 
 ```{r}
-# sgbv_table <- data_sgbv %>% count(rural, time_here, sort = TRUE)
-# sgbv_table
-
 sgbv_table <- data_sgbv %>% count(police_loc, rural, sort = TRUE)
 sgbv_table
+```
 
-# ggplot(data = data_sgbv) + 
-#   geom_bar(mapping = aes(x = time_here,  fill = rural), position = "dodge")
+### Plotting the relationship between police location and rural/urban status
 
+```{r}
 ggplot(data = data_sgbv) + 
   geom_bar(mapping = aes(x = police_loc,  fill = rural), position = "dodge")
 ```
@@ -204,41 +243,22 @@ ggplot(data = data_sgbv) +
 From the above bar graph it is evident that people who have stayed more than 5 years in urban area know more about sgbv cases. Also, people who live in urban areas and has a police station nearby also knows more about such cases.
 
 
-## Question 2:
-
+## Women’s differing priorities in resolving cases of IPV vs cases of rape.
+### Ideal outcomes by random half
 ```{r}
 (ideal_random_table <- data_new %>% count(sgbv_ideal_outcome1_lab, dv_ideal_outcome1_lab, random_half, sort = TRUE))
 
-ideal_random_table_new <- ideal_random_table[!with(ideal_random_table,is.na(dv_ideal_outcome1_lab)& is.na(sgbv_ideal_outcome1_lab)),]
+ideal_random_table_new <- ideal_random_table %>%
+  filter(!is.na(dv_ideal_outcome1_lab) | !is.na(sgbv_ideal_outcome1_lab))
 
 ```
 
-
+### Fill missing dv_ideal_outcome1_lab with sgbv_ideal_outcome1_lab values
 ```{r}
-for(i in 1:length(ideal_random_table_new$sgbv_ideal_outcome1_lab)){
-  
-    if(!is.na(ideal_random_table_new$sgbv_ideal_outcome1_lab[i])){
-        ideal_random_table_new$dv_ideal_outcome1_lab[i] <-  ideal_random_table_new$sgbv_ideal_outcome1_lab[i]
-  }
-}
-
-ideal_random_table_new <- ideal_random_table_new[,-1]
-names(ideal_random_table_new) <-  c("ideal_outcome1_lab","random_half","n")
-names(ideal_random_table_new)
-#length(ideal_random_table_new)
-#require(cowplot)
-# (plot1 <- ggplot(data = data_new) + 
-#   stat_count(mapping = aes(x = dv_ideal_outcome1_lab)))
-# (plot2 <- ggplot(data = data_new) + 
-#   stat_count(mapping = aes(x = sgbv_ideal_outcome1_lab)))
-#plot_grid(plot1, plot2, labels = "AUTO")
-
-
-ideal_random_table_new
-
-
-
-str(ideal_random_table_new)
+ideal_random_table_new <- ideal_random_table_new %>%
+  mutate(dv_ideal_outcome1_lab = if_else(!is.na(sgbv_ideal_outcome1_lab), sgbv_ideal_outcome1_lab, dv_ideal_outcome1_lab)) %>%
+  select(-sgbv_ideal_outcome1_lab) %>%
+  rename(ideal_outcome1_lab = dv_ideal_outcome1_lab)
 
 
 ```
@@ -249,7 +269,7 @@ ggplot(data = ideal_random_table_new) +
 ```
 
 
-## Answer 3
+## Potential implications of differences in subgroups on any analysis which compares responses of the two subgroups
 
 
 
